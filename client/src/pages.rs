@@ -30,7 +30,7 @@ impl Default for Model{
     }
 }
 
-pub fn update(msg: Msg, model: &mut Model, _orders: &mut impl Orders<Msg>) {
+pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
     match msg {
         Msg::FormSubmit(_s) => {
             //use seed::html_document;
@@ -39,10 +39,28 @@ pub fn update(msg: Msg, model: &mut Model, _orders: &mut impl Orders<Msg>) {
             let password = seed::document().get_element_by_id("password");
             model.form.email = seed::util::get_value(&email.unwrap()).unwrap();
             model.form.password = seed::util::get_value(&password.unwrap()).unwrap();
-            _orders.skip().perform_cmd({
-                async { Msg::Fetched(send_message(&model.form).await) }
+            orders.perform_cmd({
+                // `request` has to be outside of the async function because we can't pass reference
+                // to the form (`&model.form`) into the async function (~= `Future`).
+                // (As a workaround we can `clone` the form, but then there will be unnecessary cloning.(
+                let request = Request::new("/login")
+                    .method(Method::Post)
+                    .json(&model.form);
+                // The first `async` is just the function / `Future` / command
+                // that will be executed by `orders.perform_cmd`.
+                // ---
+                // The second `async` function + its `await` allow us to write async code
+                // that returns `Result` for `Msg::Fetched(result)` and contains `await`s
+                // and early returns (`?`).
+                async { Msg::Fetched(async {
+                    request?
+                        .fetch()
+                        .await?
+                        .check_status()?
+                        .json()
+                        .await
+                }.await)}
             });
-            //send_message(&model.form);
             //log!(req);
         },
         Msg::Fetched(Ok(response_data)) => {
@@ -56,17 +74,6 @@ pub fn update(msg: Msg, model: &mut Model, _orders: &mut impl Orders<Msg>) {
     }
 }
 
-async fn send_message(form: &LoginForm) -> fetch::Result<shared::models::user::AuthUser> {
-
-    Request::new("/login")
-        .method(Method::Post)
-        .json(form)?
-        .fetch()
-        .await?
-        .check_status()?
-        .json()
-        .await
-}
 #[derive(Clone)]
 pub enum Pages{
     Home,
@@ -80,7 +87,8 @@ impl Default for Pages {
     }
 }
 
-#[derive(Clone,Debug)]
+// Try to not derive `Clone` for `Msg` - it often leads to problems or signals problems in the code.
+#[derive(Debug)]
 pub enum Msg{
     FormSubmit(String),
     Fetched(fetch::Result<shared::models::user::AuthUser>),

@@ -24,7 +24,7 @@ impl Default for Model {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub enum Msg{
     RouteChanged(Option<Route>),
     LoginMsg(pages::Msg)

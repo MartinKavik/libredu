@@ -1,0 +1,7 @@
+[workspace]
+members = [
+    "ulak",
+    #"generator",  TODO: missing in the repo => prevents client compilation => uncomment
+    "client",
+    "shared"
+]
