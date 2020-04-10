@@ -1,0 +1,59 @@
+[package]
+name = "ulak"
+version = "0.1.0"
+authors = ["mehmeteribol <mehmeteribol@gmail.com>"]
+edition = "2018"
+[[bin]]
+name = "actix-server"
+path = "src/main.rs"
+
+[dependencies]
+actix-codec = "0.2.0"
+awc = "1.0.1"
+actix = "0.9.0"
+actix_derive="*"
+actix-rt = "1.0.0"
+actix-web = "2.0.0"
+actix-files = "0.2.1"
+actix-session = "0.3.0"
+actix-utils = "1.0.3"
+actix-identity = "0.2.0"
+redis-async = "0.6.1"
+futures = "0.3.1"
+env_logger = "0.5"
+bytes = "0.5"
+tera = "0.11"
+openssl = { version="0.10" }
+bcrypt = "*"
+chrono = { version = "0.4.6", features = ["serde"] }
+diesel = { version = "1.3.3", features = ["postgres", "uuid", "r2d2", "chrono"] }
+dotenv = "0.13.0"
+failure = "0.1.2"
+r2d2 = "0.8.2"
+r2d2_postgres= "*"
+postgres = "*"
+serde = "1.0.71"
+serde_derive = "1.0.71"
+serde_json="*"
+serde_yaml = "0.8"
+serde_bytes = "0.11"
+sparkpost = "*"
+uuid = { version = "0.6.5", features = ["serde", "v4"] }
+json = "*"
+hashbrown = "*"
+actix-web-actors="2.0.0"
+#Redis dependencies
+#actix-redis = { git = "https://github.com/actix/actix-redis.git", branch="master" }
+num_cpus = "*"
+structopt = "*"
+
+
+# Auth
+#actix-session = "0.1.0-beta.2"
+#actix-identity = "0.1.0"
+actix-redis = "*"
+http = { version="0.1", optional=true }
+rand = "0.6.5"
+
+#juniper
+#juniper = "0.11.1"
