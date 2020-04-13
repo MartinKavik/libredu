@@ -24,7 +24,7 @@ pub struct Model {
 // TODO: It should be probably in the `shared` crate.
 #[derive(Debug, Default, Serialize, Deserialize)]
 pub struct LoginForm{
-     email: String,
+     username: String,
      password: String
 }
 
@@ -43,7 +43,7 @@ pub enum Msg{
 
 pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>, ctx: &mut Context) {
     match msg {
-        Msg::EmailChanged(email) => model.form.email = email,
+        Msg::EmailChanged(email) => model.form.username = email,
         Msg::PasswordChanged(password) => model.form.password = password,
         Msg::SubmitForm => {
             orders.perform_cmd({
@@ -70,6 +70,10 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>, ctx: &
             });
         },
         Msg::Fetched(Ok(auth_user)) => {
+            let store = seed::storage::get_storage();
+            log!(store);
+            let store = seed::storage::get_storage();
+            log!(seed::storage::load_data::<AuthUser>(&store.unwrap(), "user"));
             ctx.user = Some(auth_user)
         }
 
@@ -99,7 +103,7 @@ pub fn view(model: &Model)-> Node<Msg>{
                                 // TODO: `username` vs `email`?
                                 At::Name=>"username",
                                 At::Id=>"email"
-                                At::Value => &model.form.email,
+                                At::Value => &model.form.username,
                             },
                             input_ev(Ev::Input, Msg::EmailChanged),
                         ],
@@ -113,14 +117,14 @@ pub fn view(model: &Model)-> Node<Msg>{
                                 At::Type=>"password",
                                 At::Placeholder=>"Şifreniz",
                                 // TODO: `username` vs `password`?
-                                At::Name=>"username",
+                                At::Name=>"password",
                                 At::Id=>"password"
                                 At::Value => &model.form.password,
                             },
                             input_ev(Ev::Input, Msg::PasswordChanged),
                         ],
                         span![C!{"icon is-small is-left"}, i![C!{"fa fa-envelop"}]],
-                        span![&model.form.email]
+                        span![&model.form.username]
                     ]
                 ],
                 div![C!{"field"},
