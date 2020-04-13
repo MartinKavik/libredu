@@ -1,5 +1,4 @@
 use seed::{*, prelude::*};
-
 use shared::models::user::AuthUser;
 
 mod page;
@@ -15,12 +14,11 @@ const SIGN_IN: &str = "sign_in";
 fn init(url: Url, orders: &mut impl Orders<Msg>) -> Model {
     orders
         .subscribe(Msg::UrlChanged);
-
-    Model {
-        // TODO: Load the user (e.g. from LocalStorage).
-        ctx: Context { user: None },
-        page: Page::init(url),
-    }
+    let store = seed::storage::get_storage();
+    let user = seed::storage::load_data::<AuthUser>(&store.unwrap(), "user");
+    let mut model = Model::default();
+    model.ctx = Context{user: user};
+    model
 }
 
 // ------ ------
@@ -32,6 +30,14 @@ struct Model {
     page: Page
 }
 
+impl Default for Model{
+    fn default()-> Self{
+        Model{
+            ctx: Context{ user: None},
+            page: Page::Home
+        }
+    }
+}
 // ------ Context ------
 
 pub struct Context {
@@ -73,6 +79,9 @@ impl Urls {
     pub fn sign_in() -> String {
         format!("/{}", SIGN_IN)
     }
+    pub fn login() -> String {
+        format!("/{}", LOGIN)
+    }
 }
 
 // ------ ------
@@ -89,6 +98,7 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
     let ctx = &mut model.ctx;
     match msg {
         Msg::UrlChanged(subs::UrlChanged(url)) => {
+
             model.page = Page::init(url);
         },
         Msg::LoginMsg(msg) => {
@@ -104,24 +114,23 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
 // ------ ------
 
 // `view` should return `Vec<Node<Msg>` or `Node<Msg>` or hide the specific type under `impl IntoNodes<Msg>`.
-fn view(model: &Model) -> Vec<Node<Msg>> {
+fn view(model: &Model) -> Node<Msg> {
+    let user = &model.ctx;
     match &model.page {
-        Page::Home => vec![view_navbar(), div!["I'm home"]],
-        Page::Login(model) => vec![
-            view_navbar(),
+        Page::Home => {
+            nav![
+                C!["navbar", "is-fixed-top"],
+                view_navbar_brand(),
+                div!["I'm home"], view_navbar_end(user)
+            ]
+        },
+        Page::Login(model) => nav![
+            C!["navbar", "is-fixed-top"],
             page::login::view(model).map_msg(Msg::LoginMsg)
         ],
-        Page::School => vec![view_navbar(), div!["I'm school/timetable"]],
-        Page::NotFound => vec![view_navbar(), div!["404"]],
+        Page::School => nav![C!["navbar", "is-fixed-top"], div!["I'm school/timetable"]],
+        Page::NotFound => nav![C!["navbar", "is-fixed-top"], div!["404"]],
     }
-}
-
-fn view_navbar() -> Node<Msg> {
-    // `C!` is a better alternative to `class!` (`class!` will be deprecated).
-    nav![C!["navbar", "is-fixed-top"],
-        view_navbar_brand(),
-        view_navbar_end()
-    ]
 }
 
 fn view_navbar_brand() -> Vec<Node<Msg>>{
@@ -147,17 +156,24 @@ fn view_navbar_brand() -> Vec<Node<Msg>>{
     "#)
 }
 
-fn view_navbar_end() -> Vec<Node<Msg>>{
-    raw!(r#"
-        <div class="navbar-end">
-            <a class="navbar-item"  href="/login">
-            Giriş Yap
-            </a>
-            <a class="navbar-item" href ="/school">
-            Üye Ol
-            </a>
-        </div>
-      "#)
+fn view_navbar_end(user: &Context) -> Node<Msg>{
+    match &user.user{
+        Some(u)=>{
+            div![
+                C!{"navbar-end"},
+                    a![
+                        C!{"navbar-item"},&u.first_name
+                    ]
+            ]
+        },
+        None=>{
+            div![
+                C!{"navbar-end"},
+                    a![C!{"navbar-item"}, attrs!{At::Href => Urls::login()}, "Giriş Yap"]
+            ]
+        }
+    }
+
 }
 
 // ------ ------
