@@ -84,7 +84,12 @@ pub async fn index(tmpl: Data<tera::Tera>, req: HttpRequest, session: Session, p
 pub async fn login(tmpl: Data<tera::Tera>, session: Session, req: HttpRequest, payload:Option<Json<LoginForm>>) -> Result<HttpResponse> {
     let mut context = tera::Context::new();
     if req.is_auth(&session){
-        Ok(HttpResponse::Found().header("location", "/").finish())
+        println!("aaa");
+        use crate::schema::users::dsl::*;
+        let conn = pool();
+        let user: Option<AuthUser> = session.get("user").unwrap();
+        Ok(HttpResponse::Ok().content_type("application/json").json(user.unwrap()))
+        //Ok(HttpResponse::Found().header("location", "/").finish())
     }
     else{
         match *req.method(){
@@ -93,8 +98,10 @@ pub async fn login(tmpl: Data<tera::Tera>, session: Session, req: HttpRequest, p
                 Ok(HttpResponse::Ok().content_type("text/html").body(s.unwrap()))
             },
             Method::POST=>{
+                println!("bb");
                 match payload{
                     Some(post)=>{
+                        println!("c");
                         let log = req.login(&post.username, &post.password);
                         if log {
                             use crate::schema::users::dsl::*;
@@ -103,14 +110,14 @@ pub async fn login(tmpl: Data<tera::Tera>, session: Session, req: HttpRequest, p
                             let user = users
                                 .filter(email.eq(&post.username))
                                 .select((id,first_name,last_name,username, email, is_admin))
-                                .get_result::<AuthUser>(&conn);
+                                .get_result::<AuthUser>(&conn).unwrap();
                             session.clear();
-                            session.set("user", user.unwrap()).unwrap();
+                            session.set("user", &user).unwrap();
                             session.set("is_auth", &true).unwrap();
                             context.insert("status", &"202");
                             //println!("{:?}\n", req.headers());
                             //println!("mime{:?}", req.mime_type().unwrap().unwrap());
-                            Ok(HttpResponse::Ok().content_type("application/json").json(context))
+                            Ok(HttpResponse::Ok().content_type("application/json").json(user))
                         }
                         else{
                             context.insert("status", &"401");
@@ -119,6 +126,7 @@ pub async fn login(tmpl: Data<tera::Tera>, session: Session, req: HttpRequest, p
                         }
                     },
                     None=>{
+                        println!("dd");
                         context.insert("status", &"400");
                         context.insert("error", &"Giriş bilgileri hatalı");
                         Ok(HttpResponse::Ok().content_type("application/json").json(context))
@@ -126,6 +134,7 @@ pub async fn login(tmpl: Data<tera::Tera>, session: Session, req: HttpRequest, p
                 }
             },
             _=>{
+                println!("ee");
                 context.insert("status", &"405");
                 context.insert("error", &"Metod desteklenmiyor");
                 Ok(HttpResponse::Ok().content_type("application/json").json(context))

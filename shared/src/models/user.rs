@@ -7,6 +7,6 @@ pub struct AuthUser{
     pub email: String,
     pub username: Option<String>,
     pub is_admin: bool,
-    pub is_active: bool,
-    pub is_staff: bool,
+    //pub is_active: bool,
+    //pub is_staff: bool,
 }
