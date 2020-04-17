@@ -1,7 +1,7 @@
 use seed::{*, prelude::*};
 use serde::{Deserialize, Serialize};
 
-use crate::{Context, Urls};
+use crate::{Context, STORAGE_KEY};
 use shared::models::user::AuthUser;
 //use seed::app::subs::url_requested::UrlRequest;
 
@@ -33,7 +33,6 @@ pub struct LoginForm{
 //    Update
 // ------ ------
 
-// Try to not derive `Clone` for `Msg` - it often leads to problems or signals problems in the code.
 #[derive(Debug)]
 pub enum Msg{
     EmailChanged(String),
@@ -42,67 +41,51 @@ pub enum Msg{
     Fetched(fetch::Result<AuthUser>),
 }
 
-pub fn update(msg: Msg, page: &mut crate::Page, orders: &mut impl Orders<Msg>, ctx: &mut Context) {
+pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>, ctx: &mut Context) {
     match msg {
         Msg::EmailChanged(email) => {
-            match page{
-                crate::Page::Login(model)=>model.form.username = email,
-                _=>{}
-            }
-
+            model.form.username = email;
         },
         Msg::PasswordChanged(password) => {
-            match page{
-                crate::Page::Login(model)=>model.form.password = password,
-                _=>{}
-            }
+            model.form.password = password;
         },
         Msg::SubmitForm => {
-            match page{
-                crate::Page::Login(model)=>{
-                    orders.perform_cmd({
-                        // `request` has to be outside of the async function because we can't pass reference
-                        // to the form (`&model.form`) into the async function (~= `Future`).
-                        // (As a workaround we can `clone` the form, but then there will be unnecessary cloning.)
-                        let request = Request::new("/login")
-                            .method(Method::Post)
-                            .json(&model.form);
-                        // The first `async` is just the function / `Future` / command
-                        // that will be executed by `orders.perform_cmd`.
-                        // ---
-                        // The second `async` function + its `await` allow us to write async code
-                        // that returns `Result` (consumed by `Msg::Fetched`) and contains `await`s
-                        // and early returns (`?`).
-                        async { Msg::Fetched(async {
-                            request?
-                                .fetch()
-                                .await?
-                                .check_status()?
-                                .json()
-                                .await
-                        }.await)}
-                    });
-                },
-                _=>{}
-            }
-
+            orders.perform_cmd({
+                // `request` has to be outside of the async function because we can't pass reference
+                // to the form (`&model.form`) into the async function (~= `Future`).
+                // (As a workaround we can `clone` the form, but then there will be unnecessary cloning.)
+                let request = Request::new("/login")
+                    .method(Method::Post)
+                    .json(&model.form);
+                // The first `async` is just the function / `Future` / command
+                // that will be executed by `orders.perform_cmd`.
+                // ---
+                // The second `async` function + its `await` allow us to write async code
+                // that returns `Result` (consumed by `Msg::Fetched`) and contains `await`s
+                // and early returns (`?`).
+                async { Msg::Fetched(async {
+                    request?
+                        .fetch()
+                        .await?
+                        .check_status()?
+                        .json()
+                        .await
+                }.await)}
+            });
         },
         Msg::Fetched(Ok(auth_user)) => {
-            use crate::STORAGE_KEY;
-            let store = seed::storage::get_storage().expect("get local storage");
-            seed::storage::store_data(&store, STORAGE_KEY, &auth_user);
-            orders.notify(subs::UrlRequested::new(Url::new()));
-            //*page = crate::Page::init(Url::new(vec![""]));
+            let store = storage::get_storage().expect("get local storage");
+            storage::store_data(&store, STORAGE_KEY, &auth_user);
             ctx.user = Some(auth_user);
+            orders.notify(
+                subs::UrlRequested::new(crate::Urls::new(&ctx.base_url).home())
+            );
         }
 
         Msg::Fetched(Err(fetch_error)) => {
             log!("fetch AuthUser error:", fetch_error);
             orders.skip();
         }
-        /*Msg::Logout =>{
-            ctx.user = None
-        }*/
     }
 }
 
@@ -110,7 +93,7 @@ pub fn update(msg: Msg, page: &mut crate::Page, orders: &mut impl Orders<Msg>, c
 //     View
 // ------ ------
 
-pub fn view(model: &Model)-> Node<Msg>{
+pub fn view(model: &Model, ctx: &Context)-> Node<Msg>{
     div![C!{"columns"},
         div![C!{"column is-2"}],
         div![C!{"column is-4"},
@@ -166,7 +149,10 @@ pub fn view(model: &Model)-> Node<Msg>{
                     ]
                 ],
                 div![C!{"field"},
-                    "Üye olmak için", a![attrs!{At::Href => Urls::sign_in()}, " tıklayınız"]
+                    "Üye olmak için",
+                    a![attrs!{ At::Href => crate::Urls::new(&ctx.base_url).sign_in() },
+                        " tıklayınız"
+                    ]
                 ]
             ]
         ]

@@ -1,7 +1,10 @@
 use serde::*;
+
+pub type UserId = i32;
+
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct AuthUser{
-    pub id: i32,
+    pub id: UserId,
     pub first_name: String,
     pub last_name: String,
     pub email: String,
